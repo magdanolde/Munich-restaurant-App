@@ -1,0 +1,85 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Tisch für 15</title>
+  <meta name="description" content="Munich restaurants for groups of 15+ with veggie options, mid-range prices and no credit card or no-show fee found on their websites.">
+  <meta property="og:title" content="Tisch für 15">
+  <meta property="og:description" content="Munich restaurants for groups of 15+, no card or no-show fee.">
+  <meta name="theme-color" content="#1d5fae">
+  <link rel="icon" href="favicon.svg" type="image/svg+xml">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=Public+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@500&display=swap">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>Tisch für <span>15</span></h1>
+    <p class="sub">Munich restaurants in and around the centre where a group of 15+ can book a normal table, everyone orders à la carte and pays separately. Each website was read for credit card, deposit and no-show rules. Places that ask for any of those are listed at the bottom, not here.</p>
+    <ul class="rules" aria-label="Rules every place meets">
+      <li><b>Veg + meat</b> on the menu, fully veggie places marked</li>
+      <li><b>Table for 15+</b>, à la carte, separate bills</li>
+      <li><b>No card, no no-show fee</b> found on the website</li>
+      <li><b>Mains about €15–30</b>, no gourmet</li>
+    </ul>
+  </header>
+
+  <div class="bar" role="search">
+    <label class="sr" for="q">Search restaurants</label>
+    <input id="q" class="search" type="search" placeholder="Search name, cuisine, street" autocomplete="off">
+    <div class="chips" id="areas" aria-label="Filter by area"></div>
+    <div class="row">
+      <div class="chips">
+        <button class="chip" id="vegOnly" type="button" aria-pressed="false">Fully vegetarian or vegan</button>
+        <button class="chip" id="direct" type="button" aria-pressed="false">Book by phone or email</button>
+      </div>
+    </div>
+    <div class="row">
+      <div class="chips" id="show" aria-label="Show">
+        <button class="chip" type="button" data-show="all">All</button>
+        <button class="chip" type="button" data-show="new">Not been yet</button>
+        <button class="chip" type="button" data-show="been">Been there</button>
+      </div>
+      <div class="row">
+        <span class="count" id="count"></span>
+        <label class="sr" for="sort">Sort</label>
+        <select id="sort"><option value="area">By area</option><option value="name">A–Z</option><option value="recent">Last visited</option></select>
+      </div>
+    </div>
+  </div>
+
+  <div class="visited">
+    <span id="visitedText"></span>
+    <span><button class="btn" id="copyVisited" type="button">Copy our list</button> <span class="count" id="visitedMsg" role="status"></span></span>
+  </div>
+
+  <div class="list" id="list" aria-live="polite"></div>
+
+  <section class="more">
+    <details open>
+      <summary>Before you book: ask this</summary>
+      <p class="note">"Nothing found" means the website doesn't mention a card or fee. It isn't a promise. Send this when you book:</p>
+      <div class="ask" id="askText">Hallo, wir möchten am [Datum] um [Uhrzeit] einen Tisch für ca. [Anzahl] Personen reservieren und bestellen à la carte. Ist für die Reservierung eine Kreditkarte, eine Anzahlung oder eine No-Show- bzw. Stornogebühr nötig? Vielen Dank!</div>
+      <button class="btn" id="copyAsk" type="button">Copy text</button> <span class="count" id="copyMsg" role="status"></span>
+    </details>
+    <details>
+      <summary id="outTitle">Left out</summary>
+      <ul id="outList"></ul>
+    </details>
+    <details>
+      <summary id="blockedTitle">Not checked: website blocks automatic reading</summary>
+      <p class="note">These might be fine. Look at them yourself or call.</p>
+      <ul id="blockedList"></ul>
+    </details>
+  </section>
+
+  <p class="foot" id="foot"></p>
+</div>
+
+<script src="data.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
