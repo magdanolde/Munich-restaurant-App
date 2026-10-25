@@ -157,6 +157,8 @@
     const blocked = window.NOT_CHECKED || [];
     $("#outTitle").textContent = "Left out: card, fees, set menu or too pricey (" + out.length + ")";
     $("#blockedTitle").textContent = "Not checked: website blocks automatic reading (" + blocked.length + ")";
+    $("#outList").replaceChildren();
+    $("#blockedList").replaceChildren();
     for (const [n, why, u] of out) $("#outList").append(el("li", {}, el("a", { href: u, target: "_blank", rel: "noopener", text: n }), el("span", { text: ": " + why })));
     for (const n of blocked) $("#blockedList").append(el("li", { text: n }));
     $("#foot").textContent = "Checked on " + (window.CHECKED_ON || "") + " from each restaurant's own website. Prices are main courses from the current menu where it was readable. Visits are saved only in this browser.";
