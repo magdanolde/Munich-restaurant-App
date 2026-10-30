@@ -1,5 +1,6 @@
 // "Tisch für 15" – list, filters and "we've been here" marks.
-// Visits are saved in this browser only (localStorage).
+// Visits are shared for everyone through /api/visits (Vercel + Upstash Redis).
+// If that isn't set up yet (or you open index.html from your disk), they stay in this browser.
 (function () {
   const R = window.RESTAURANTS || [];
   const AREAS = window.AREAS || ["All"];
@@ -30,6 +31,85 @@
   }
   let visited = loadVisited();
 
+  // ---- Shared storage -------------------------------------------------
+  const API = "api/visits";
+  const CODE_KEY = "tisch15:code";
+  let shared = false;         // true once the server answered
+  let codeRequired = false;
+  let busy = false;
+  const getCode = () => { try { return localStorage.getItem(CODE_KEY) || ""; } catch (_) { return ""; } };
+  const setCode = (c) => { try { localStorage.setItem(CODE_KEY, c); } catch (_) {} };
+
+  async function pull() {
+    if (busy) return;
+    try {
+      const r = await fetch(API, { cache: "no-store" });
+      if (!r.ok) throw new Error(r.status);
+      const data = await r.json();
+      const first = !shared;
+      shared = true;
+      codeRequired = !!data.codeRequired;
+      const server = data.visits || {};
+      // One-time move of visits marked earlier in this browser
+      let migrated = false;
+      try { migrated = localStorage.getItem("tisch15:migrated") === "1"; } catch (_) {}
+      if (first && !migrated) {
+        const local = loadVisited();
+        const missing = Object.keys(local).filter((id) => !server[id] && R.some((x) => x.id === id));
+        try { localStorage.setItem("tisch15:migrated", "1"); } catch (_) {}
+        for (const id of missing) { const ok = await push(id, local[id], true); if (!ok) break; server[id] = local[id]; }
+      }
+      visited = server;
+      render();
+    } catch (_) {
+      if (!shared) syncNote();
+    }
+  }
+
+  // Returns true when saved. date = "YYYY-MM-DD" or null to remove.
+  async function push(id, date, quiet) {
+    const headers = { "Content-Type": "application/json" };
+    let code = getCode();
+    if (code) headers["x-group-code"] = code;
+    let r = await fetch(API, { method: "POST", headers, body: JSON.stringify({ id, date }) });
+    if (r.status === 401 && !quiet) {
+      code = (window.prompt("Enter your group code to mark visits:") || "").trim();
+      if (!code) return false;
+      setCode(code);
+      headers["x-group-code"] = code;
+      r = await fetch(API, { method: "POST", headers, body: JSON.stringify({ id, date }) });
+      if (r.status === 401) { setCode(""); alert("That code is not right."); return false; }
+    }
+    if (!r.ok) return false;
+    const data = await r.json();
+    if (data.visits) visited = data.visits;
+    return true;
+  }
+
+  async function save(id, date) {
+    if (!shared) {
+      if (date) visited[id] = date; else delete visited[id];
+      saveVisited(); render(); return;
+    }
+    const before = Object.assign({}, visited);
+    if (date) visited[id] = date; else delete visited[id];
+    render();
+    busy = true;
+    let ok = false;
+    try { ok = await push(id, date, false); } catch (_) {}
+    busy = false;
+    if (!ok) { visited = before; $("#visitedMsg").textContent = "Couldn't save. Try again."; }
+    render();
+  }
+
+  function syncNote() {
+    const n = $("#syncNote");
+    if (!n) return;
+    n.textContent = shared
+      ? "Shared with everyone who opens this app."
+      : "Saved in this browser only (shared storage not connected).";
+  }
+
   const today = () => new Date().toISOString().slice(0, 10);
   const fmtDate = (iso) => {
     const d = new Date(iso + "T12:00:00");
@@ -51,16 +131,12 @@
   }
 
   function toggleVisited(id) {
-    if (visited[id]) delete visited[id]; else visited[id] = today();
-    saveVisited();
-    render();
+    save(id, visited[id] ? null : today());
   }
 
   function setDate(id, value) {
     if (!value) return;
-    visited[id] = value;
-    saveVisited();
-    render();
+    save(id, value);
   }
 
   function renderVisitedBar() {
@@ -85,6 +161,7 @@
 
     $("#count").textContent = rows.length + " of " + R.length + " places";
     renderVisitedBar();
+    syncNote();
 
     const list = $("#list");
     list.replaceChildren();
@@ -161,7 +238,7 @@
     $("#blockedList").replaceChildren();
     for (const [n, why, u] of out) $("#outList").append(el("li", {}, el("a", { href: u, target: "_blank", rel: "noopener", text: n }), el("span", { text: ": " + why })));
     for (const n of blocked) $("#blockedList").append(el("li", { text: n }));
-    $("#foot").textContent = "Checked on " + (window.CHECKED_ON || "") + " from each restaurant's own website. Prices are main courses from the current menu where it was readable. Visits are saved only in this browser.";
+    $("#foot").textContent = "Checked on " + (window.CHECKED_ON || "") + " from each restaurant's own website. Prices are main courses from the current menu where it was readable. Visits are shared with everyone who opens the app.";
   }
 
   $("#q").addEventListener("input", (e) => { state.q = e.target.value; render(); });
@@ -185,4 +262,11 @@
   renderShow();
   fillLists();
   render();
+
+  // Load the shared list, then keep it fresh
+  if (location.protocol !== "file:") {
+    pull();
+    setInterval(() => { if (document.visibilityState === "visible") pull(); }, 30000);
+    document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible") pull(); });
+  }
 })();
